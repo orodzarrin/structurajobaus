@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { JobsListing } from '@/components/jobs/jobs-listing'
 import { PageHeader } from '@/components/page-header'
-import { INDUSTRY_ROLES, type Sector } from '@/lib/taxonomy'
+import { getJobCounts } from '@/lib/jobs'
+import { CIVIL_SPECIALISMS, type Sector } from '@/lib/taxonomy'
 import type { JobFilters } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -11,13 +12,20 @@ const SECTOR_COPY = {
     title: 'Industry structural engineering jobs',
     description:
       'Structural, civil, geotechnical, bridge, design and project engineering roles with Australian consultancies, contractors and asset owners.',
-    roles: INDUSTRY_ROLES,
   },
 }
 
-export function SectorPage({ sector, filters }: { sector: Sector; filters: JobFilters }) {
+export async function SectorPage({ sector, filters }: { sector: Sector; filters: JobFilters }) {
   const copy = SECTOR_COPY[sector]
   const basePath = `/${sector}`
+  // Chips are the civil disciplines, not seniority levels: one Structural chip
+  // covers every structural role (Structural, Senior, Principal), and every
+  // other discipline the board actually has jobs in gets a chip too. A chip
+  // is only shown while it leads to at least one live job.
+  const counts = await getJobCounts()
+  const disciplines = CIVIL_SPECIALISMS.filter(
+    (specialism) => (counts.bySpecialism[specialism.slug] ?? 0) > 0,
+  )
 
   return (
     <>
@@ -27,32 +35,34 @@ export function SectorPage({ sector, filters }: { sector: Sector; filters: JobFi
         description={copy.description}
         breadcrumbs={[{ label: copy.eyebrow, href: basePath }]}
       >
-        <nav aria-label={`${copy.eyebrow} by role`} className="mt-8">
+        <nav aria-label={`${copy.eyebrow} by discipline`} className="mt-8">
           <ul className="flex flex-wrap gap-2">
             <li>
               <Link
                 href={basePath}
                 className={cn(
                   'inline-flex rounded-full border px-3.5 py-1.5 text-sm transition-colors',
-                  !filters.role ? 'border-accent bg-accent text-accent-foreground' : 'border-white/20 hover:border-white/50',
+                  !filters.specialism && !filters.role
+                    ? 'border-accent bg-accent text-accent-foreground'
+                    : 'border-white/20 hover:border-white/50',
                 )}
               >
                 All roles
               </Link>
             </li>
-            {copy.roles.map((role) => (
-              <li key={role.slug}>
+            {disciplines.map((specialism) => (
+              <li key={specialism.slug}>
                 <Link
-                  href={`${basePath}?role=${role.slug}`}
-                  aria-current={filters.role === role.slug ? 'page' : undefined}
+                  href={`${basePath}?specialism=${specialism.slug}`}
+                  aria-current={filters.specialism === specialism.slug ? 'page' : undefined}
                   className={cn(
                     'inline-flex rounded-full border px-3.5 py-1.5 text-sm transition-colors',
-                    filters.role === role.slug
+                    filters.specialism === specialism.slug
                       ? 'border-accent bg-accent text-accent-foreground'
                       : 'border-white/20 hover:border-white/50',
                   )}
                 >
-                  {role.name}
+                  {specialism.short}
                 </Link>
               </li>
             ))}

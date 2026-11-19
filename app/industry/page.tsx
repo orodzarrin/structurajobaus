@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { SectorPage } from '@/components/jobs/sector-page'
 import { isKnownRole, isKnownSector, parseFilters } from '@/lib/jobs'
-import { getRole } from '@/lib/taxonomy'
+import { getRole, getSpecialism } from '@/lib/taxonomy'
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
 
@@ -13,9 +13,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const filters = parseFilters(await searchParams)
   const roleName = filters.role ? getRole(filters.role)?.name : undefined
+  const specialismName = filters.specialism ? getSpecialism(filters.specialism)?.name : undefined
+  const filterName = specialismName ?? roleName
 
-  const title = roleName
-    ? `${roleName} Jobs in Australia`
+  const title = filterName
+    ? `${filterName} Jobs in Australia`
     : 'Industry Structural Engineering Jobs Australia'
 
   const otherFilters =
@@ -23,8 +25,12 @@ export async function generateMetadata({
 
   return {
     title,
-    description: `Browse ${roleName ?? 'structural, civil, geotechnical, bridge, design and project engineer'} roles with Australian consultancies, contractors and asset owners.`,
-    alternates: { canonical: roleName ? `/industry?role=${filters.role}` : '/industry' },
+    description: `Browse ${filterName ?? 'structural, civil, geotechnical, bridge, design and project engineer'} roles with Australian consultancies, contractors and asset owners.`,
+    alternates: {
+      canonical: filterName
+        ? `/industry?${filters.specialism ? `specialism=${filters.specialism}` : `role=${filters.role}`}`
+        : '/industry',
+    },
     robots: otherFilters ? { index: false, follow: true } : { index: true, follow: true },
   }
 }

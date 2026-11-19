@@ -44,34 +44,28 @@ export function Hero({ stats, updatedAt }: HeroProps) {
         <div className="mt-5 flex flex-wrap items-center gap-2 text-sm text-white/80">
           <span>Popular:</span>
           <Link
-            href="/industry?role=structural-engineer"
+            href="/industry?specialism=structural"
             className="rounded-full border border-white/20 px-3 py-1 transition-colors hover:border-accent hover:text-white"
           >
             Structural Engineers
           </Link>
           <Link
-            href="/industry?role=geotechnical-engineer"
+            href="/industry?specialism=geotechnical"
             className="rounded-full border border-white/20 px-3 py-1 transition-colors hover:border-accent hover:text-white"
           >
             Geotechnical Engineers
           </Link>
           <Link
-            href="/industry?role=bridge-engineer"
+            href="/industry?specialism=water"
             className="rounded-full border border-white/20 px-3 py-1 transition-colors hover:border-accent hover:text-white"
           >
-            Bridge Engineers
+            Water Engineers
           </Link>
           <Link
-            href="/industry?role=civil-engineer"
+            href="/industry?specialism=transport"
             className="rounded-full border border-white/20 px-3 py-1 transition-colors hover:border-accent hover:text-white"
           >
-            Civil Engineers
-          </Link>
-          <Link
-            href="/industry?role=senior-structural-engineer"
-            className="rounded-full border border-accent/60 bg-accent/10 px-3 py-1 font-medium text-white transition-colors hover:border-accent"
-          >
-            Senior Structural Engineers
+            Transport &amp; Roads Engineers
           </Link>
         </div>
 

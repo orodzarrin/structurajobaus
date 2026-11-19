@@ -51,13 +51,10 @@ export default async function CountriesPage() {
         inDirectory: CITIES.some((city) => city.slug === job.city),
       })
     }
-    return {
-      slug: job.slug,
-      title: job.title,
-      organisation: job.organisation,
-      city: job.city,
-      countrySlug: cSlug,
-    }
+    // The ad text stays on the detail page: the list below the dropdowns
+    // renders JobCard from these fields alone.
+    const { description: _description, responsibilities: _responsibilities, requirements: _requirements, tags: _tags, ...cardJob } = job
+    return { ...cardJob, countrySlug: cSlug }
   })
 
   return (

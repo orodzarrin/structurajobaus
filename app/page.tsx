@@ -40,7 +40,7 @@ export default async function HomePage() {
         linkLabel="View all jobs"
         columns={3}
       />
-      <RoleCategories counts={counts.byRole} />
+      <RoleCategories counts={counts.bySpecialism} />
       <JobSection
         id="latest-industry"
         eyebrow="Industry"

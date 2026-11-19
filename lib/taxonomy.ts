@@ -438,63 +438,94 @@ export function getCity(slug: string) {
 export interface Specialism {
   slug: string
   name: string
+  /** Short label for chips and compact lists. */
+  short: string
   keywords: string[]
 }
 
 export const CIVIL_SPECIALISMS: Specialism[] = [
   {
     slug: 'structural',
-    name: 'Structural & bridges',
+    name: 'Structural engineering',
+    short: 'Structural',
     keywords: ['structural', 'bridge', 'steel', 'concrete', 'timber', 'seismic', 'earthquake'],
   },
   {
+    slug: 'bridges',
+    name: 'Bridges',
+    short: 'Bridges',
+    keywords: ['bridge'],
+  },
+  {
     slug: 'geotechnical',
-    name: 'Geotechnical & tunnelling',
+    name: 'Geotechnical engineering',
+    short: 'Geotechnical',
     keywords: ['geotechnical', 'geotech', 'foundation', 'soil', 'piling', 'tunnel', 'earthworks', 'retaining'],
+  },
+  {
+    slug: 'tunnelling',
+    name: 'Tunnelling',
+    short: 'Tunnelling',
+    keywords: ['tunnel', 'tunnelling', 'tunneling'],
   },
   {
     slug: 'water',
     name: 'Water & drainage',
+    short: 'Water',
     keywords: ['water', 'hydraulic', 'hydrology', 'drainage', 'wastewater', 'stormwater', 'flood', 'sewerage', 'sewer'],
   },
   {
     slug: 'dams',
     name: 'Dams & hydropower',
-    keywords: ['dam engineer', 'dams', 'dam design', 'hydropower', 'hydroelectric', 'reservoir', 'spillway'],
+    short: 'Dams',
+    keywords: ['dam engineer', 'dams', 'dam design', 'hydropower', 'hydro power', 'hydroelectric', 'reservoir', 'spillway'],
   },
   {
     slug: 'transport',
     name: 'Transport & roads',
+    short: 'Transport & Roads',
     keywords: ['transport', 'traffic', 'road', 'highway', 'rail', 'pavement', 'airport'],
+  },
+  {
+    slug: 'rail',
+    name: 'Rail',
+    short: 'Rail',
+    keywords: ['rail', 'railway', 'metro'],
   },
   {
     slug: 'construction',
     name: 'Construction & project management',
+    short: 'Construction',
     keywords: ['construction', 'site engineer', 'project manager', 'contracts', 'planning', 'land development', 'subdivision'],
   },
   {
     slug: 'coastal',
     name: 'Coastal, ports & marine',
+    short: 'Coastal & Marine',
     keywords: ['coastal', 'marine', 'port engineer', 'harbour', 'harbor', 'offshore', 'jetty', 'seawall'],
   },
   {
     slug: 'mining',
     name: 'Mining & resources',
+    short: 'Mining',
     keywords: ['mining', 'minerals', 'oil and gas', 'oil & gas'],
   },
   {
     slug: 'environmental',
     name: 'Environmental & sustainability',
+    short: 'Environmental',
     keywords: ['environmental', 'sustainability', 'climate', 'carbon'],
   },
   {
     slug: 'materials',
     name: 'Materials & durability',
-    keywords: ['materials', 'durability', 'corrosion', 'asphalt'],
+    short: 'Materials',
+    keywords: ['material', 'durability', 'corrosion', 'asphalt'],
   },
   {
     slug: 'surveying',
     name: 'Surveying & geospatial',
+    short: 'Surveying',
     keywords: ['survey', 'geospatial', 'gis', 'lidar'],
   },
 ]

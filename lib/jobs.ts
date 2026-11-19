@@ -1,6 +1,6 @@
 import dataset from '@/data/jobs.json'
 import { SAMPLE_JOBS } from './data/sample-jobs'
-import { ALL_ROLES, CITIES, CIVIL_SPECIALISMS, STATES, type Sector, type StateCode } from './taxonomy'
+import { ALL_ROLES, CITIES, CIVIL_SPECIALISMS, STATES, type Sector, type Specialism, type StateCode } from './taxonomy'
 import type { Job, JobFilters } from './types'
 
 /*
@@ -150,6 +150,19 @@ export function isKnownCountry(slug?: string) {
   return !slug || getCountries().some((entry) => entry.slug === slug)
 }
 
+/**
+ * Whether a listing belongs to a civil sub-discipline. The feed never labels
+ * the discipline, so the listing's own words decide it — title, summary,
+ * department and tags. Shared by the filter and the counts, so a chip and
+ * its result list can never disagree.
+ */
+export function jobMatchesSpecialism(job: Job, specialism: Specialism): boolean {
+  const haystack = [job.title, job.summary, job.department ?? '', ...job.tags]
+    .join(' ')
+    .toLowerCase()
+  return specialism.keywords.some((keyword) => haystack.includes(keyword))
+}
+
 function matchesFilters(job: Job, filters: JobFilters) {
   if (filters.sector && job.sector !== filters.sector) return false
   if (filters.role && job.roleSlug !== filters.role) return false
@@ -158,12 +171,7 @@ function matchesFilters(job: Job, filters: JobFilters) {
   // The feed never labels the sub-discipline, so the listing's own words decide it.
   if (filters.specialism) {
     const specialism = CIVIL_SPECIALISMS.find((entry) => entry.slug === filters.specialism)
-    if (specialism) {
-      const haystack = [job.title, job.summary, job.department ?? '', ...job.tags]
-        .join(' ')
-        .toLowerCase()
-      if (!specialism.keywords.some((keyword) => haystack.includes(keyword))) return false
-    }
+    if (specialism && !jobMatchesSpecialism(job, specialism)) return false
   }
 
   if (filters.city && job.city !== filters.city) return false
@@ -237,6 +245,8 @@ export async function getJobCounts() {
     byCity: {} as Record<string, number>,
     byCountry: {} as Record<string, number>,
     byRole: {} as Record<string, number>,
+    /** Jobs per civil sub-discipline (a job can match more than one). */
+    bySpecialism: {} as Record<string, number>,
   }
 
   for (const job of JOBS) {
@@ -246,6 +256,11 @@ export async function getJobCounts() {
     const country = countrySlug(countryOfJob(job))
     counts.byCountry[country] = (counts.byCountry[country] ?? 0) + 1
     counts.byRole[job.roleSlug] = (counts.byRole[job.roleSlug] ?? 0) + 1
+    for (const specialism of CIVIL_SPECIALISMS) {
+      if (jobMatchesSpecialism(job, specialism)) {
+        counts.bySpecialism[specialism.slug] = (counts.bySpecialism[specialism.slug] ?? 0) + 1
+      }
+    }
   }
 
   return counts

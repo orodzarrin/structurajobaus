@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
+import { JobCard } from '@/components/jobs/job-card'
+import type { Job } from '@/lib/types'
 
 export interface PickerCountry {
   country: string
@@ -19,11 +21,13 @@ export interface PickerCity {
   inDirectory: boolean
 }
 
-export interface PickerJob {
-  slug: string
-  title: string
-  organisation: string
-  city: string
+/**
+ * A job as the picker needs it: the full card fields, but without the ad
+ * text — the detail page carries that, so the list below the dropdowns does
+ * not ship 238 full descriptions to the browser. `countrySlug` is computed
+ * server-side (the client cannot import the job dataset to derive it).
+ */
+export type PickerJob = Omit<Job, 'description' | 'responsibilities' | 'requirements' | 'tags'> & {
   countrySlug: string
 }
 
@@ -106,8 +110,9 @@ export function CountryPicker({ countries, cities, jobs, total }: CountryPickerP
   const jobDisabled = country === '' || visibleJobs.length === 0
 
   return (
-    <div className="mt-6 rounded-lg border bg-card p-4 sm:p-5">
-      <div className="grid gap-4 md:grid-cols-3">
+    <>
+      <div className="mt-6 rounded-lg border bg-card p-4 sm:p-5">
+        <div className="grid gap-4 md:grid-cols-3">
         <div>
           <label htmlFor="picker-country" className="mb-1.5 block text-sm font-medium">
             Country
@@ -197,6 +202,39 @@ export function CountryPicker({ countries, cities, jobs, total }: CountryPickerP
           </Link>
         )}
       </div>
-    </div>
+      </div>
+
+      {/* Job list, narrowed by the dropdowns above: all roles with nothing
+          picked, then fewer as a country and a city are chosen. Picking a job
+          in the Job dropdown still navigates to its detail page. */}
+      <div className="mt-8">
+        <p className="font-mono text-xs font-medium tracking-wider text-accent uppercase">
+          {visibleJobs.length} {visibleJobs.length === 1 ? 'role' : 'roles'} found
+          {selectedCountry ? ` in ${selectedCountry.country}` : ''}
+          {selectedCity ? ` — ${selectedCity.name}` : ''}
+        </p>
+        {visibleJobs.length > 0 ? (
+          <ul className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {visibleJobs.map((job) => (
+              <li key={job.slug}>
+                <JobCard
+                  job={{
+                    ...job,
+                    description: '',
+                    responsibilities: [],
+                    requirements: [],
+                    tags: [],
+                  }}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">
+            No open roles match this selection yet.
+          </p>
+        )}
+      </div>
+    </>
   )
 }

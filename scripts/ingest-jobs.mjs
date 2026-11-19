@@ -2,6 +2,28 @@
 /**
  * Refreshes data/jobs.json from job APIs.
  *
+ * Two cadences, one script (see .github/workflows/refresh-jobs.yml and
+ * refresh-jobs-hourly.yml):
+ *
+ *   Daily full run (06:00 Australia/Sydney) — every source: Careerjet,
+ *   Jooble, Adzuna and the employer Workday boards. This is the only run
+ *   that touches the metered aggregator APIs.
+ *
+ *   Hourly light run (INGEST_MODE=hourly) — employer Workday boards ONLY.
+ *   The aggregator APIs cannot be polled hourly, and this is a quota limit,
+ *   not a choice:
+ *     - Adzuna trial: 25 calls for the LIFETIME of the key; 4 calls per run
+ *       means hourly polling would kill the key within hours (even daily
+ *       use exhausts it in about a week — full access is £8/month).
+ *     - Jooble free plan: 500 requests for the LIFETIME of the key;
+ *       3 calls per run means hourly polling would kill the key in ~7 days
+ *       (daily use lasts ~166 days).
+ *     - Careerjet publisher keys have no published call cap, but the key is
+ *       approved per locale (en_AU only) and hourly hammering risks the key.
+ *   So hourly freshness comes from the employer boards, which need no key
+ *   and carry the employer's own vacancy (the board already removes a
+ *   vacancy when it closes). Aggregator listings refresh once a day.
+ *
  * Every source is optional and skipped when its key is absent, so the pipeline
  * runs today with whatever you have registered:
  *
@@ -16,7 +38,8 @@
  * the employer maintains.
  *
  * Run with `pnpm ingest`, or automatically at 06:00 Australia/Sydney via
- * .github/workflows/refresh-jobs.yml.
+ * .github/workflows/refresh-jobs.yml, plus hourly via
+ * .github/workflows/refresh-jobs-hourly.yml.
  *
  * Quota notes, because they shape the query counts below:
  *   - Careerjet publisher keys have no published call cap; we use 5 keywords
@@ -40,6 +63,15 @@ const ADZUNA_APP_ID = process.env.ADZUNA_APP_ID?.trim()
 const ADZUNA_APP_KEY = process.env.ADZUNA_APP_KEY?.trim()
 const CAREERJET_API_KEY = process.env.CAREERJET_API_KEY?.trim()
 const JOOBLE_API_KEY = process.env.JOOBLE_API_KEY?.trim()
+
+/**
+ * Refresh mode. `hourly` (refresh-jobs-hourly.yml) reads the employer
+ * Workday boards only — the metered aggregator APIs stay on the daily run,
+ * because their lifetime quotas (Jooble 500 calls, Adzuna 25 calls) cannot
+ * survive hourly polling. Anything else means the daily full run.
+ */
+const INGEST_MODE = (process.env.INGEST_MODE ?? 'full').trim().toLowerCase()
+const IS_HOURLY = INGEST_MODE === 'hourly'
 // Jooble issues one key per country domain and the key only works against that
 // domain: an au.jooble.org key sent to jooble.org answers 403. Override with
 // JOOBLE_BASE_URL if the key came from a different country edition.
@@ -212,21 +244,30 @@ const ROLE_RULES = [
   [/\bbridge/i, 'bridge-engineer'],
   [/project engineer/i, 'project-engineer'],
   [/design engineer|design manager/i, 'design-engineer'],
+  // Thin disciplines file under the generic civil role; their discipline
+  // comes from the keyword chips, not the role. Tunnelling is geotechnical.
+  [/tunnel/i, 'geotechnical-engineer'],
+  [/survey|water|hydraulic|hydrolog|\bdam\b|hydropower|\brail\b|coastal|marine|maritime|environment|climate|mining|material|highway|road|traffic|transport|track|catenary|\bocs\b/i, 'civil-engineer'],
   [/\bcivil\b/i, 'civil-engineer'],
 ]
 
 // The board is for civil/structural work only: "geotechnical", "construction"
-// and "bridge" count, generic "engineering" does not.
+// and "bridge" count, generic "engineering" does not. The thin disciplines
+// count too — a "Coastal Engineer" or "Materials Engineer" title belongs
+// here just as a structural one does; the discipline chips are keyword-based,
+// so a title the relevance filter rejects can never reach its chip.
 const CIVIL_DISCIPLINE =
-  /\b(structural|structures?|bridge|bridges|civil|geotechnical|construction|infrastructure|seismic|earthquake|concrete|steel|built environment|environmental engineering)\b/i
+  /\b(structural|structures?|bridge|bridges|civil|geotechnical|construction|infrastructure|seismic|earthquake|concrete|steel|built environment|environment\w*|sustainab\w*|climate|coastal|marine|maritime|water|wastewater|hydraulic|hydrolog\w*|dam|dams|hydropower|hydroelectric|survey\w*|geospatial|material\w*|durability|rail\w*|tunnel\w*|transport|traffic|highway\w*|road\w*|pavement|airport|track|permanent way|catenary|\bocs\b|mining|minerals)\b/i
 // Words that can only mean our discipline when they appear in a title, so they
 // outrank a sibling discipline in the same title.
 const STRONG_CIVIL =
   /\b(structural|structures?|civil|bridge|geotechnical|seismic|earthquake)\b/i
 // Sibling disciplines advertised next to civil engineering. Their
 // titles mention "engineering", which is not enough to belong here.
+// "Mining" is NOT in this list: mining & resources is one of the board's own
+// disciplines, so a Mining Engineer title belongs here; petroleum stays out.
 const OTHER_DISCIPLINE =
-  /\b(mechanical|mechatronic|robotics?|electrical|electronic|chemical|aerospace|aeronautical|combustion|process systems|software|computer science|data science|biomedical|mining|petroleum|nursing|medical|psychology|law|business|accounting|finance|marketing|natural sciences|biology|chemistry|physics)\b/i
+  /\b(mechanical|mechatronic|robotics?|electrical|electronic|chemical|aerospace|aeronautical|combustion|process systems|software|computer science|data science|biomedical|petroleum|nursing|medical|psychology|law|business|accounting|finance|marketing|natural sciences|biology|chemistry|physics)\b/i
 const NOISE_TITLE =
   /\b(draft|drafter|draught|bim|detailer|estimator|sales|recruit|talent|technician|labourer|laborer|welder|boilermaker|foreman|supervisor)\b/i
 const VISA_PATTERN = /\b(visa sponsorship|sponsorship|sponsor(?:s|ed|ing)?|sponsored|482|tss|work visa)\b/i
@@ -289,6 +330,150 @@ const CITY_ALIASES = {
   'waurn ponds': 'geelong',
 }
 
+/**
+ * International cities, generated from the CITIES list in lib/taxonomy.ts
+ * (every non-Australian hub there). Key is the lowercase city name as it
+ * appears in a location string; value is [city slug, region, country].
+ * The ingest cannot import the TypeScript taxonomy, so this map is a copy —
+ * when a new international hub is added to CITIES, add it here too.
+ * Vancouver is special-cased below (BC, Canada vs WA, United States).
+ */
+const INTERNATIONAL_CITIES = {
+  aberdeen: ['aberdeen', 'Scotland', 'United Kingdom'],
+  abha: ['abha', 'Aseer', 'Saudi Arabia'],
+  'abu dhabi': ['abu-dhabi', 'Abu Dhabi', 'United Arab Emirates'],
+  alula: ['al-ula', 'AlUla', 'Saudi Arabia'],
+  anchorage: ['anchorage', 'Alaska', 'United States'],
+  atlanta: ['atlanta', 'Georgia', 'United States'],
+  auckland: ['auckland', 'Auckland', 'New Zealand'],
+  berlin: ['berlin', 'Berlin', 'Germany'],
+  bilbao: ['bilbao', 'Basque Country', 'Spain'],
+  burnaby: ['burnaby', 'British Columbia', 'Canada'],
+  calgary: ['calgary', 'Alberta', 'Canada'],
+  christchurch: ['christchurch', 'Canterbury', 'New Zealand'],
+  cincinnati: ['cincinnati', 'Ohio', 'United States'],
+  darmstadt: ['darmstadt', 'Hesse', 'Germany'],
+  dubai: ['dubai', 'Dubai', 'United Arab Emirates'],
+  dublin: ['dublin', 'County Dublin', 'Ireland'],
+  'düsseldorf': ['dusseldorf', 'North Rhine-Westphalia', 'Germany'],
+  dusseldorf: ['dusseldorf', 'North Rhine-Westphalia', 'Germany'],
+  frankfurt: ['frankfurt', 'Hesse', 'Germany'],
+  glasgow: ['glasgow', 'Scotland', 'United Kingdom'],
+  hamburg: ['hamburg', 'Hamburg', 'Germany'],
+  karlsruhe: ['karlsruhe', 'Baden-Württemberg', 'Germany'],
+  limerick: ['limerick', 'County Limerick', 'Ireland'],
+  liverpool: ['liverpool', 'England', 'United Kingdom'],
+  london: ['london', 'England', 'United Kingdom'],
+  lyon: ['lyon', 'Auvergne-Rhône-Alpes', 'France'],
+  madrid: ['madrid', 'Madrid', 'Spain'],
+  milan: ['milan', 'Lombardy', 'Italy'],
+  mississauga: ['mississauga', 'Ontario', 'Canada'],
+  'montréal': ['montreal', 'Quebec', 'Canada'],
+  montreal: ['montreal', 'Quebec', 'Canada'],
+  munich: ['munich', 'Bavaria', 'Germany'],
+  muscat: ['muscat', 'Muscat', 'Oman'],
+  nanterre: ['nanterre', 'Île-de-France', 'France'],
+  napier: ['napier', "Hawke's Bay", 'New Zealand'],
+  'new york': ['new-york', 'New York', 'United States'],
+  paris: ['paris', 'Île-de-France', 'France'],
+  pickering: ['pickering', 'Ontario', 'Canada'],
+  pittsburgh: ['pittsburgh', 'Pennsylvania', 'United States'],
+  riyadh: ['riyadh', 'Riyadh', 'Saudi Arabia'],
+  rome: ['rome', 'Lazio', 'Italy'],
+  sengenthal: ['sengenthal', 'Bavaria', 'Germany'],
+  tauranga: ['tauranga', 'Bay of Plenty', 'New Zealand'],
+  vancouver: ['vancouver', 'British Columbia', 'Canada'],
+  wasco: ['wasco', 'California', 'United States'],
+  watford: ['watford', 'England', 'United Kingdom'],
+  wellington: ['wellington', 'Wellington', 'New Zealand'],
+}
+
+/** Country names as they appear in location strings, longest first. */
+const COUNTRY_NAMES = [
+  ['united arab emirates', 'United Arab Emirates'],
+  ['united states', 'United States'],
+  ['united kingdom', 'United Kingdom'],
+  ['saudi arabia', 'Saudi Arabia'],
+  ['new zealand', 'New Zealand'],
+  ['northern ireland', 'United Kingdom'],
+  ['united states of america', 'United States'],
+  ['great britain', 'United Kingdom'],
+  ['australia', 'Australia'],
+  ['germany', 'Germany'],
+  ['ireland', 'Ireland'],
+  ['france', 'France'],
+  ['canada', 'Canada'],
+  ['spain', 'Spain'],
+  ['italy', 'Italy'],
+  ['oman', 'Oman'],
+  ['england', 'United Kingdom'],
+  ['scotland', 'United Kingdom'],
+  ['wales', 'United Kingdom'],
+  ['u.a.e.', 'United Arab Emirates'],
+  ['uae', 'United Arab Emirates'],
+  ['usa', 'United States'],
+  ['uk', 'United Kingdom'],
+]
+
+/**
+ * Regions that pin a location to a country even when the country itself is
+ * not named ("Houston, TX", "Toronto, Ontario"). US state abbreviations
+ * exclude WA: "Perth, WA" is Western Australia, and "Seattle, WA" needs the
+ * country named to tell them apart.
+ */
+const REGION_TO_COUNTRY = {
+  // United States — state names and abbreviations (minus WA, see above).
+  alabama: 'United States', alaska: 'United States', arizona: 'United States',
+  arkansas: 'United States', california: 'United States', colorado: 'United States',
+  connecticut: 'United States', delaware: 'United States', florida: 'United States',
+  georgia: 'United States', hawaii: 'United States', idaho: 'United States',
+  illinois: 'United States', indiana: 'United States', iowa: 'United States',
+  kansas: 'United States', kentucky: 'United States', louisiana: 'United States',
+  maine: 'United States', maryland: 'United States', massachusetts: 'United States',
+  michigan: 'United States', minnesota: 'United States', mississippi: 'United States',
+  missouri: 'United States', montana: 'United States', nebraska: 'United States',
+  nevada: 'United States', 'new hampshire': 'United States', 'new jersey': 'United States',
+  'new mexico': 'United States', 'new york': 'United States', 'north carolina': 'United States',
+  'north dakota': 'United States', ohio: 'United States', oklahoma: 'United States',
+  oregon: 'United States', pennsylvania: 'United States', 'rhode island': 'United States',
+  'south carolina': 'United States', 'south dakota': 'United States', tennessee: 'United States',
+  texas: 'United States', utah: 'United States', vermont: 'United States',
+  virginia: 'United States', 'west virginia': 'United States', wisconsin: 'United States',
+  wyoming: 'United States', 'district of columbia': 'United States',
+  al: 'United States', ak: 'United States', az: 'United States', ar: 'United States',
+  ca: 'United States', co: 'United States', ct: 'United States', de: 'United States',
+  fl: 'United States', ga: 'United States', hi: 'United States', id: 'United States',
+  il: 'United States', in: 'United States', ia: 'United States', ks: 'United States',
+  ky: 'United States', la: 'United States', me: 'United States', md: 'United States',
+  ma: 'United States', mi: 'United States', mn: 'United States', ms: 'United States',
+  mo: 'United States', mt: 'United States', ne: 'United States', nv: 'United States',
+  nh: 'United States', nj: 'United States', nm: 'United States', ny: 'United States',
+  nc: 'United States', nd: 'United States', oh: 'United States', ok: 'United States',
+  or: 'United States', pa: 'United States', ri: 'United States', sc: 'United States',
+  sd: 'United States', tn: 'United States', tx: 'United States', ut: 'United States',
+  vt: 'United States', va: 'United States', wv: 'United States', wi: 'United States',
+  wy: 'United States',
+  // Canada — provinces and territories.
+  alberta: 'Canada', 'british columbia': 'Canada', manitoba: 'Canada',
+  'new brunswick': 'Canada', 'newfoundland and labrador': 'Canada',
+  'nova scotia': 'Canada', ontario: 'Canada', 'prince edward island': 'Canada',
+  quebec: 'Canada', saskatchewan: 'Canada', yukon: 'Canada',
+  'northwest territories': 'Canada', nunavut: 'Canada',
+  ab: 'Canada', bc: 'Canada', mb: 'Canada', nb: 'Canada', nl: 'Canada',
+  ns: 'Canada', on: 'Canada', pe: 'Canada', qc: 'Canada', sk: 'Canada',
+  yt: 'Canada',
+  // New Zealand regions.
+  canterbury: 'New Zealand', otago: 'New Zealand', southland: 'New Zealand',
+  'bay of plenty': 'New Zealand', waikato: 'New Zealand',
+  // Germany, France, Spain, Italy regions.
+  bavaria: 'Germany', hesse: 'Germany', 'baden-württemberg': 'Germany',
+  'north rhine-westphalia': 'Germany', berlin: 'Germany', hamburg: 'Germany',
+  'île-de-france': 'France', 'auvergne-rhône-alpes': 'France',
+  'basque country': 'Spain', madrid: 'Spain', lombardy: 'Italy', lazio: 'Italy',
+  'county dublin': 'Ireland', 'county limerick': 'Ireland',
+  aseer: 'Saudi Arabia', riyadh: 'Saudi Arabia',
+}
+
 function classifyLocation(text) {
   const source = String(text ?? '').replace(/\s+/g, ' ').trim()
   const lower = source.toLowerCase()
@@ -314,6 +499,14 @@ function classifyLocation(text) {
   for (const [slug, code] of Object.entries(CITY_STATE)) {
     const label = slug.replace(/-/g, ' ')
     if (new RegExp(`\\b${label}\\b`, 'i').test(haystack)) {
+      // Newcastle and Perth exist on both sides of the world: a posting that
+      // names England/Scotland/the UK is the British one, not NSW/WA.
+      if (
+        (slug === 'newcastle' || slug === 'perth') &&
+        /\b(england|scotland|united kingdom|\buk\b)\b/i.test(source)
+      ) {
+        continue
+      }
       citySlug = slug
       cityName = label.replace(/\b\w/g, (char) => char.toUpperCase())
       state = state ?? code
@@ -321,11 +514,158 @@ function classifyLocation(text) {
     }
   }
 
-  if (!cityName) {
-    const first = source.split(',')[0].trim()
-    cityName = first || 'Australia'
-    citySlug = slugify(cityName) || 'australia'
+  if (cityName) {
+    return { citySlug, state: state ?? 'NSW', location: `${cityName}, ${state ?? 'NSW'}` }
   }
+
+  // No Australian city matched: try the international maps before falling
+  // back to Australia, or a London posting would land in NSW.
+  const first = source.split(',')[0].trim()
+  const segments = source
+    .split(',')
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean)
+  const titleCase = (value) =>
+    String(value)
+      .replace(/(^|[\s-])\S/g, (match) => match.toUpperCase())
+      .replace(/\bAnd\b/g, 'and')
+
+  // 1. A known international city name in the FIRST segment — the city part
+  // of "City, Region, Country". A city name in a later segment is the
+  // state/region, not the city: "White Plains, New York" is White Plains,
+  // not New York City. And a region the ad itself states ("Birmingham,
+  // Alabama") beats the mapped city ("Birmingham, UK") when it pins a
+  // different country.
+  for (const [name, [slug, region, country]] of Object.entries(INTERNATIONAL_CITIES)) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    if (!new RegExp(`\\b${escaped}\\b`, 'i').test(first)) continue
+    // Vancouver, WA (United States) vs Vancouver, BC (Canada): the state
+    // code alone decides it, since the city name is the same.
+    if (
+      name === 'vancouver' &&
+      (/\bwashington\b/i.test(source) || segments.includes('wa'))
+    ) {
+      return {
+        citySlug: 'vancouver-wa',
+        state: 'Washington',
+        location: 'Vancouver, Washington',
+        country: 'United States',
+      }
+    }
+    // A stated region that pins another country voids the mapped city;
+    // one in the same country but with a different name is the display
+    // region (Newark, Delaware is Delaware, not the mapped New Jersey).
+    let displayRegion = region
+    let voided = false
+    for (const [stated, statedCountry] of Object.entries(REGION_TO_COUNTRY)) {
+      const matched =
+        stated.length === 2
+          ? segments.includes(stated)
+          : new RegExp(`\\b${stated.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(lower)
+      if (!matched) continue
+      if (statedCountry !== country) {
+        voided = true
+        break
+      }
+      const statedName =
+        stated.length === 2
+          ? source
+              .split(',')
+              .map((part) => part.trim())
+              .find((part) => part.toLowerCase() === stated) ?? stated.toUpperCase()
+          : titleCase(stated)
+      if (statedName !== region) displayRegion = statedName
+      break
+    }
+    if (voided) continue
+    const cityName = titleCase(name)
+    return {
+      citySlug: slug,
+      state: displayRegion,
+      location: cityName === displayRegion ? `${cityName}, ${country}` : `${cityName}, ${displayRegion}`,
+      country,
+    }
+  }
+
+  // 2. A country name in the location string; the city is the first part.
+  // Prefer a named region (Ontario, Bavaria…) as the state when one is there.
+  for (const [name, country] of COUNTRY_NAMES) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    if (new RegExp(`\\b${escaped}\\b`, 'i').test(lower)) {
+      const city = first || country
+      // An Australian state code the ad itself states ("Cooma, NSW") is the
+      // state; only when there is none does the country stand in for it.
+      let displayRegion = country === 'Australia' && state ? state : country
+      for (const [region, regionCountry] of Object.entries(REGION_TO_COUNTRY)) {
+        if (regionCountry !== country) continue
+        // Two-letter codes only count as their own comma-separated segment
+        // (", TX"), never as a bare word — "in" must not match "in London".
+        const matched =
+          region.length === 2
+            ? segments.includes(region)
+            : new RegExp(`\\b${region.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(
+                lower,
+              )
+        if (matched) {
+          displayRegion =
+            region.length === 2
+              ? (source
+                  .split(',')
+                  .map((part) => part.trim())
+                  .find((part) => part.toLowerCase() === region) ?? region.toUpperCase())
+              : titleCase(region)
+          break
+        }
+      }
+      let citySlug = slugify(city) || 'australia'
+      // A slug that collides with an Australian city (Perth, Scotland) gets
+      // the country appended so it never merges with the Australian one.
+      if (CITY_STATE[citySlug] && country !== 'Australia') {
+        citySlug = `${citySlug}-${slugify(country)}`
+      }
+      return {
+        citySlug,
+        state: displayRegion,
+        location: `${city}, ${displayRegion}`,
+        country,
+      }
+    }
+  }
+
+  // 3. A region that pins the country (state/province name, or a state code
+  // as its own comma-separated segment — never as a bare word, so "in" can
+  // only mean Indiana when the ad itself writes ", IN").
+  for (const [region, country] of Object.entries(REGION_TO_COUNTRY)) {
+    const isCode = region.length === 2
+    const matched = isCode
+      ? segments.includes(region)
+      : new RegExp(
+          `\\b${region.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`,
+          'i',
+        ).test(lower)
+    if (matched) {
+      const city = first || country
+      const displayRegion = isCode
+        ? source
+            .split(',')
+            .map((part) => part.trim())
+            .find((part) => part.toLowerCase() === region) ?? region.toUpperCase()
+        : titleCase(region)
+      let citySlug = slugify(city) || 'australia'
+      if (CITY_STATE[citySlug] && country !== 'Australia') {
+        citySlug = `${citySlug}-${slugify(country)}`
+      }
+      return {
+        citySlug,
+        state: displayRegion,
+        location: `${city}, ${displayRegion}`,
+        country,
+      }
+    }
+  }
+
+  cityName = first || 'Australia'
+  citySlug = slugify(cityName) || 'australia'
 
   return { citySlug, state: state ?? 'NSW', location: `${cityName}, ${state ?? 'NSW'}` }
 }
@@ -358,7 +698,7 @@ function buildJob({
   const text = stripHtml(description)
   if (!isRelevantTitle(cleanTitle, cleanCompany, text)) return null
 
-  const { citySlug, state, location } = classifyLocation(locationText)
+  const { citySlug, state, location, country } = classifyLocation(locationText)
 
   const hasRealSalary =
     Number.isFinite(salaryMin) && Number.isFinite(salaryMax) && salaryMax > 0 && salaryMax >= salaryMin
@@ -382,6 +722,9 @@ function buildJob({
     organisation: cleanCompany,
     city: citySlug,
     state,
+    // Explicit for international listings: without it, a city outside the
+    // taxonomy would be filed under Australia by countryOfJob.
+    ...(country && country !== 'Australia' ? { country } : {}),
     location,
     ...(salary ? { salaryMin: salary.min, salaryMax: salary.max } : {}),
     salaryPeriod: 'year',
@@ -722,17 +1065,19 @@ async function main() {
     }
   }
 
-  if (CAREERJET_API_KEY) {
+  if (!IS_HOURLY && CAREERJET_API_KEY) {
     try {
       add(await collect(QUERIES, fetchCareerjetPage, fromCareerjet, 'Careerjet', calls), 'careerjet')
     } catch (error) {
       console.warn(`[ingest] Careerjet failed: ${error instanceof Error ? error.message : error}`)
     }
+  } else if (IS_HOURLY) {
+    console.log('[ingest] Hourly run — skipping Careerjet (daily run only).')
   } else {
     console.warn('[ingest] CAREERJET_API_KEY not set — skipping Careerjet.')
   }
 
-  if (JOOBLE_API_KEY) {
+  if (!IS_HOURLY && JOOBLE_API_KEY) {
     try {
       add(
         await collect(
@@ -747,16 +1092,24 @@ async function main() {
     } catch (error) {
       console.warn(`[ingest] Jooble failed: ${error instanceof Error ? error.message : error}`)
     }
+  } else if (IS_HOURLY) {
+    // Jooble's free plan is 500 requests for the lifetime of the key: hourly
+    // polling (3 calls x 24) would exhaust it in about a week.
+    console.log('[ingest] Hourly run — skipping Jooble (daily run only, lifetime quota).')
   } else {
     console.warn('[ingest] JOOBLE_API_KEY not set — skipping Jooble.')
   }
 
-  if (ADZUNA_APP_ID && ADZUNA_APP_KEY) {
+  if (!IS_HOURLY && ADZUNA_APP_ID && ADZUNA_APP_KEY) {
     try {
       add(await collect(ADZUNA_QUERIES, fetchAdzunaPage, fromAdzuna, 'Adzuna', calls, 1), 'adzuna')
     } catch (error) {
       console.warn(`[ingest] Adzuna failed: ${error instanceof Error ? error.message : error}`)
     }
+  } else if (IS_HOURLY) {
+    // Adzuna trial is 25 calls for the lifetime of the key: hourly polling
+    // would exhaust it within hours. It stays on the daily run.
+    console.log('[ingest] Hourly run — skipping Adzuna (daily run only, lifetime quota).')
   } else if (ADZUNA_APP_ID || ADZUNA_APP_KEY) {
     // Adzuna needs the pair; one secret on its own is a half-finished setup, so
     // say which is missing instead of skipping the source without explanation.
@@ -767,7 +1120,13 @@ async function main() {
 
   // Employer career sites are read directly, so these ads need no aggregator:
   // they carry the employer's own name and a link that stays under their control.
-  const employerJobs = (await fetchWorkdayJobs()).map(buildJob).filter(Boolean)
+  // The hourly run spends one page per term (not two) to keep the request
+  // volume polite: ~100 search calls an hour across the six boards.
+  const { jobs: employerRaws, readCompanies: readWorkdayCompanies } = await fetchWorkdayJobs(
+    undefined,
+    { pagesPerTerm: IS_HOURLY ? 1 : 2 },
+  )
+  const employerJobs = employerRaws.map(buildJob).filter(Boolean)
   if (employerJobs.length > 0) add(employerJobs, 'workday')
 
   if (used.length === 0) {
@@ -790,7 +1149,44 @@ async function main() {
   // test before publication.
   const directFromEmployer = (job) => job.source === 'workday'
   const checked = await dropDeadLinks(fresh.filter((job) => !directFromEmployer(job)))
-  const jobs = [...checked, ...fresh.filter(directFromEmployer)].sort(byNewest)
+
+  // Listings the fetched sources cannot produce — the international jobs
+  // collected directly from company career sites, and any other manual
+  // additions — must survive a refresh: a rebuild from sources alone would
+  // wipe them. Carry over every still-open listing whose source was NOT
+  // fetched this run (a fetched source's silence means the vacancy closed;
+  // an unfetched source says nothing about it). Expiry still comes from
+  // closingDate, so a carried listing leaves the board on its own.
+  // 'workday' needs a finer key than the source alone: it covers several
+  // company boards, and only the boards that answered this run were read —
+  // a vacancy from a board that failed, or from a company with no board
+  // configured, must be carried, not dropped because another employer's
+  // board was silent about it.
+  const sourceWasRead = (job) =>
+    job.source === 'workday'
+      ? readWorkdayCompanies.has(String(job.organisation ?? '').toLowerCase())
+      : used.includes(job.source)
+  const carried = []
+  if (Array.isArray(existing.jobs)) {
+    const seenKeys = new Set(
+      [...checked, ...fresh.filter(directFromEmployer)].map(dedupeKey),
+    )
+    for (const job of existing.jobs) {
+      if (!job || job.closingDate < today) continue
+      if (sourceWasRead(job)) continue
+      const key = dedupeKey(job)
+      if (seenKeys.has(key)) continue
+      seenKeys.add(key)
+      carried.push(job)
+    }
+  }
+  if (carried.length > 0) {
+    console.log(
+      `[ingest] Carried over ${carried.length} still-open listings from sources not fetched this run.`,
+    )
+  }
+
+  const jobs = [...checked, ...fresh.filter(directFromEmployer), ...carried].sort(byNewest)
 
   if (jobs.length === 0) {
     console.warn('[ingest] No matching structural engineering vacancies returned — keeping the previous snapshot.')
@@ -805,8 +1201,10 @@ async function main() {
   }
 
   // Jooble snippets are cut off mid-sentence; replace them with the full ad
-  // text from the Jooble job page before publishing.
-  await enrichDescriptions(jobs)
+  // text from the Jooble job page before publishing. Only listings fetched
+  // this run need it: carried-over Jooble ads were already enriched when
+  // they first arrived, so re-fetching them every hour would be pure waste.
+  await enrichDescriptions([...checked, ...fresh.filter(directFromEmployer)])
 
   await mkdir(path.dirname(DATA_FILE), { recursive: true })
   await writeFile(
