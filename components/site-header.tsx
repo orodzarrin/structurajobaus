@@ -14,15 +14,13 @@ import { cn } from '@/lib/utils'
 const NAV_ITEMS = [
   { href: '/industry', label: 'Industry Jobs' },
   { href: '/cities', label: 'Browse by City' },
-  { href: '/jobs?visa=1', label: 'Visa Sponsorship' },
-  { href: '/account', label: 'Job alerts' },
-  { href: '/post-a-job', label: 'Post a job' },
+  { href: '/alerts', label: 'Job alerts' },
 ]
 
 /**
  * Sign-up and sign-in sit in the Profile menu in the top-right corner, where
  * people look for an account button: its panel holds "Continue with Google"
- * and "Email sign-in", both leading to the existing sign-in page.
+ * and "Email sign-in" — Google to /api/auth/google, email to the sign-in page.
  *
  * The header is the same for every page, so it asks the server who is signed in
  * from the browser (/api/auth/me) instead of reading the session cookie in the
@@ -71,13 +69,13 @@ export function SiteHeader() {
         <Logo />
 
         {/*
-         * Five links plus two account buttons only fit on one line from 1280px up,
+         * Three links plus two account buttons only fit on one line from 1280px up,
          * so the nav appears at xl and the hamburger covers everything narrower.
          * Everything is nowrap: a wrapped label is what made the bar look ragged.
          */}
         <nav aria-label="Main" className="hidden items-center gap-0.5 xl:flex">
           {NAV_ITEMS.map((item) => {
-            const active = pathname.startsWith(item.href.split('?')[0]) && item.href !== '/jobs?visa=1'
+            const active = pathname.startsWith(item.href)
             return (
               <Link
                 key={item.href}

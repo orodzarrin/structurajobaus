@@ -10,10 +10,11 @@ import { useLiveStore } from '@/lib/live-store'
  * Profile menu in the header, modelled on the reference panel.
  *
  * Signed out, it shows "Not signed in" with "Continue with Google" and
- * "Email sign-in" — both lead to the site's existing sign-in page (/login).
- * That page is honest about accounts: without Upstash/Auth keys it shows the
- * setup notice, so nothing here pretends a sign-in happened. Google sign-in
- * itself is not wired up — there are no OAuth keys for it.
+ * "Email sign-in". Google goes straight to /api/auth/google, which redirects
+ * to Google when GOOGLE_CLIENT_ID is set and back to /login with an honest
+ * explanation when it is not. Email sign-in goes to the site's sign-in page
+ * (/login). That page is honest about accounts: without Upstash/Auth keys it
+ * shows the setup notice, so nothing here pretends a sign-in happened.
  *
  * Counts are real: "Favourite roles" is the bookmarked jobs on this device
  * (localStorage); "Saved lists" is the signed-in account's server lists
@@ -95,7 +96,7 @@ export function ProfileMenu({ email }: { email: string | null | undefined }) {
                   My account
                 </Link>
                 <Link
-                  href="/account"
+                  href="/alerts"
                   onClick={() => setOpen(false)}
                   className="rounded-md px-2 py-2 text-sm font-medium hover:bg-muted"
                 >
@@ -120,7 +121,7 @@ export function ProfileMenu({ email }: { email: string | null | undefined }) {
                 </div>
               </div>
               <Link
-                href="/login"
+                href="/api/auth/google"
                 onClick={() => setOpen(false)}
                 className="mt-4 flex h-10 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90"
               >
@@ -153,7 +154,7 @@ export function ProfileMenu({ email }: { email: string | null | undefined }) {
               <span className="font-mono text-sm tabular-nums">{savedIds.length}</span>
             </Link>
             <Link
-              href="/account"
+              href="/alerts"
               onClick={() => setOpen(false)}
               className="flex items-center justify-between rounded-md px-1 py-1.5 text-sm hover:bg-muted"
             >
