@@ -133,22 +133,37 @@ export const CIVIL_SPECIALISMS: Specialism[] = [
   {
     slug: 'geotechnical',
     name: 'Geotechnical & tunnelling',
-    keywords: ['geotechnical', 'geotech', 'foundation', 'soil', 'piling', 'tunnel'],
+    keywords: ['geotechnical', 'geotech', 'foundation', 'soil', 'piling', 'tunnel', 'earthworks', 'retaining'],
   },
   {
     slug: 'water',
     name: 'Water & drainage',
-    keywords: ['water', 'hydraulic', 'hydrology', 'drainage', 'wastewater', 'stormwater', 'flood'],
+    keywords: ['water', 'hydraulic', 'hydrology', 'drainage', 'wastewater', 'stormwater', 'flood', 'sewerage', 'sewer'],
+  },
+  {
+    slug: 'dams',
+    name: 'Dams & hydropower',
+    keywords: ['dam engineer', 'dams', 'dam design', 'hydropower', 'hydroelectric', 'reservoir', 'spillway'],
   },
   {
     slug: 'transport',
     name: 'Transport & roads',
-    keywords: ['transport', 'traffic', 'road', 'highway', 'rail', 'pavement'],
+    keywords: ['transport', 'traffic', 'road', 'highway', 'rail', 'pavement', 'airport'],
   },
   {
     slug: 'construction',
     name: 'Construction & project management',
-    keywords: ['construction', 'site engineer', 'project manager', 'contracts', 'planning'],
+    keywords: ['construction', 'site engineer', 'project manager', 'contracts', 'planning', 'land development', 'subdivision'],
+  },
+  {
+    slug: 'coastal',
+    name: 'Coastal, ports & marine',
+    keywords: ['coastal', 'marine', 'port engineer', 'harbour', 'harbor', 'offshore', 'jetty', 'seawall'],
+  },
+  {
+    slug: 'mining',
+    name: 'Mining & resources',
+    keywords: ['mining', 'minerals', 'oil and gas', 'oil & gas'],
   },
   {
     slug: 'environmental',

@@ -7,7 +7,7 @@ import { getCountries, getJobCounts } from '@/lib/jobs'
 export const metadata: Metadata = {
   title: 'Civil Engineering Jobs by Country',
   description:
-    'Browse industry civil engineering jobs by country, then by city. Countries come from the live job data — new countries appear here automatically when jobs from elsewhere arrive.',
+    'Browse industry civil engineering jobs by country, then by city. Every listed country is selectable, even where no roles have arrived yet. Counts come from the live job data — a new country appears here automatically when jobs from elsewhere arrive.',
   alternates: { canonical: '/countries' },
 }
 
@@ -19,7 +19,7 @@ export default async function CountriesPage() {
       <PageHeader
         eyebrow="Browse by country"
         title="Civil engineering jobs by country"
-        description="Pick a country to see its cities and open roles. The list comes from the live job data, so a new country shows up here as soon as jobs from there arrive."
+        description="Pick a country to see its cities and open roles — every country on the list is selectable, even where no roles have arrived yet. Counts come from the live job data, so a new country shows up here as soon as jobs from there arrive."
         breadcrumbs={[{ label: 'Countries', href: '/countries' }]}
       />
       <section aria-labelledby="browse-countries" className="py-16 md:py-20">
@@ -63,25 +63,46 @@ export default async function CountriesPage() {
               <li key={entry.slug}>
                 <Link
                   href={`/countries/${entry.slug}`}
-                  className="group relative flex h-full flex-col overflow-hidden rounded-lg border bg-primary p-6 text-primary-foreground transition-colors hover:bg-primary/95"
+                  className={
+                    entry.count > 0
+                      ? 'group relative flex h-full flex-col overflow-hidden rounded-lg border bg-primary p-6 text-primary-foreground transition-colors hover:bg-primary/95'
+                      : 'group relative flex h-full flex-col overflow-hidden rounded-lg border bg-card p-6 transition-colors hover:border-primary/40'
+                  }
                 >
-                  <div className="blueprint-grid absolute inset-0 opacity-60" aria-hidden="true" />
+                  <div
+                    className="blueprint-grid absolute inset-0 opacity-60"
+                    aria-hidden="true"
+                  />
                   <div className="relative flex items-start justify-between">
                     <div>
                       <p className="font-mono text-xs tracking-wider text-accent uppercase">Country</p>
                       <h3 className="mt-1 text-xl font-semibold">{entry.country}</h3>
                     </div>
                     <ArrowUpRight
-                      className="size-5 text-white/60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-accent"
+                      className={
+                        entry.count > 0
+                          ? 'size-5 text-white/60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-accent'
+                          : 'size-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-accent'
+                      }
                       aria-hidden="true"
                     />
                   </div>
-                  <p className="relative mt-3 line-clamp-2 text-sm leading-relaxed text-white/70">
-                    Civil engineering roles in {entry.country} — pick a city to narrow it down.
+                  <p
+                    className={
+                      entry.count > 0
+                        ? 'relative mt-3 line-clamp-2 text-sm leading-relaxed text-white/70'
+                        : 'relative mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground'
+                    }
+                  >
+                    {entry.count > 0
+                      ? `Civil engineering roles in ${entry.country} — pick a city to narrow it down.`
+                      : `No open roles in ${entry.country} yet — new roles will appear here as soon as they arrive.`}
                   </p>
                   <p className="relative mt-5 font-mono text-sm tabular-nums">
-                    <span className="text-white">{entry.count}</span>{' '}
-                    <span className="text-white/60">open roles</span>
+                    <span className={entry.count > 0 ? 'text-white' : ''}>{entry.count}</span>{' '}
+                    <span className={entry.count > 0 ? 'text-white/60' : 'text-muted-foreground'}>
+                      open roles
+                    </span>
                   </p>
                 </Link>
               </li>

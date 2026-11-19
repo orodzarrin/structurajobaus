@@ -396,7 +396,10 @@ function buildJob({
     postedAt,
     closingDate: addDays(postedAt, LISTING_DAYS),
     summary: truncate(text.split('\n')[0] || cleanTitle, 200),
-    description: truncate(text, 2500),
+    // Full ad text, not a snippet: the detail page shows the whole ad, so
+    // keep up to 20k characters here. Aggregator snippets are short anyway;
+    // the enrichment step below replaces them with the full text.
+    description: truncate(text, 20000),
     responsibilities: [],
     requirements: [],
     tags,
@@ -584,6 +587,74 @@ async function isDeadApplyLink(url) {
   }
 }
 
+/**
+ * Jooble's API returns only a ~300-character snippet, so a detail page built
+ * from the snapshot would show a cut-off ad. The Jooble job page itself
+ * carries the full ad as JobPosting JSON-LD — fetch it and replace the
+ * snippet. Best effort only: a blocked fetch, a missing JSON-LD block or a
+ * short text keeps the snippet, never drops the listing.
+ */
+async function fetchFullDescription(url) {
+  if (!url) return null
+  try {
+    const response = await fetch(url, {
+      redirect: 'follow',
+      headers: { 'User-Agent': LINK_CHECK_UA, Accept: 'text/html,*/*' },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!response.ok) return null
+    const html = await response.text()
+    for (const match of html.matchAll(
+      /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+    )) {
+      try {
+        const data = JSON.parse(match[1])
+        const items = Array.isArray(data) ? data : [data]
+        for (const item of items) {
+          if (item && item['@type'] === 'JobPosting' && item.description) {
+            const text = stripHtml(String(item.description))
+            if (text.length > 500) return text
+          }
+        }
+      } catch {
+        // Malformed JSON-LD — try the next block.
+      }
+    }
+    return null
+  } catch {
+    return false
+  }
+}
+
+/** Replaces Jooble snippets with the full ad text, concurrently. */
+async function enrichDescriptions(jobs, concurrency = 8) {
+  const queue = jobs.filter(
+    (job) => job.source === 'jooble' && (!job.description || job.description.length < 2000),
+  )
+  let enriched = 0
+
+  async function worker() {
+    for (;;) {
+      const job = queue.shift()
+      if (!job) return
+      const full = await fetchFullDescription(job.applyUrl)
+      if (full) {
+        job.description = full.slice(0, 20000)
+        const firstLine = full
+          .split('\n')
+          .map((line) => line.trim())
+          .find((line) => line.length > 0)
+        job.summary = truncate(firstLine ?? job.title, 200)
+        enriched++
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker))
+  console.log(`[ingest] Full descriptions: ${enriched} of ${queue.length} Jooble snippets enriched.`)
+  return jobs
+}
+
 /** Checks third-party links concurrently and returns the still-live listings. */
 async function dropDeadLinks(jobs, concurrency = 8) {
   const queue = [...jobs]
@@ -732,6 +803,10 @@ async function main() {
     )
     return
   }
+
+  // Jooble snippets are cut off mid-sentence; replace them with the full ad
+  // text from the Jooble job page before publishing.
+  await enrichDescriptions(jobs)
 
   await mkdir(path.dirname(DATA_FILE), { recursive: true })
   await writeFile(

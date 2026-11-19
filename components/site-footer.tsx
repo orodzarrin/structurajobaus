@@ -32,7 +32,7 @@ export function SiteFooter() {
         <div className="lg:col-span-2">
           <Logo inverted />
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-primary-foreground/80">
-            The specialist job board connecting structural engineers with engineering
+            The specialist job board connecting civil engineers with engineering
             firms, consultancies and contractors.
           </p>
           {updatedLabel && (
@@ -65,7 +65,7 @@ export function SiteFooter() {
 
       <div className="border-t border-primary-foreground/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-xs text-primary-foreground/75 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <p>&copy; {new Date().getFullYear()} SE Jobs Australia. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Civil Jobs Australia. All rights reserved.</p>
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <Link href="/privacy" className="hover:text-primary-foreground">
               Privacy

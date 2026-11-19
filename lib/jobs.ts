@@ -96,16 +96,50 @@ export interface CountryCount {
   count: number
 }
 
-/** Countries in the current snapshot, most jobs first. */
+/**
+ * Countries the Browse by Country page lists by name, in the order Orod
+ * asked for — every one is selectable even where no roles have arrived yet
+ * (its count is then 0, never invented). Counts always come from the live
+ * job data; a country outside this list still appears automatically when a
+ * feed brings jobs from there, appended after the listed ones.
+ */
+export const BROWSE_COUNTRIES = [
+  'United States',
+  'Canada',
+  'United Kingdom',
+  'Germany',
+  'Ireland',
+  'Italy',
+  'Spain',
+  'France',
+  'Australia',
+  'New Zealand',
+  'United Arab Emirates',
+  'Oman',
+  'Saudi Arabia',
+]
+
+/**
+ * Countries on the board, most jobs first. The listed countries always
+ * appear (with 0 where no roles have arrived yet); any other country the
+ * data carries is appended, most jobs first.
+ */
 export function getCountries(): CountryCount[] {
   const counts = new Map<string, number>()
   for (const job of JOBS) {
     const country = countryOfJob(job)
     counts.set(country, (counts.get(country) ?? 0) + 1)
   }
-  return [...counts.entries()]
+  const listed = BROWSE_COUNTRIES.map((country) => ({
+    country,
+    slug: countrySlug(country),
+    count: counts.get(country) ?? 0,
+  }))
+  const extra = [...counts.entries()]
+    .filter(([country]) => !BROWSE_COUNTRIES.includes(country))
     .map(([country, count]) => ({ country, slug: countrySlug(country), count }))
     .sort((a, b) => b.count - a.count || a.country.localeCompare(b.country))
+  return [...listed, ...extra]
 }
 
 export function getCountryBySlug(slug?: string): CountryCount | undefined {

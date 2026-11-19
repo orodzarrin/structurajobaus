@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 
 export function Logo({ className, inverted = false }: { className?: string; inverted?: boolean }) {
   return (
-    <Link href="/" className={cn('flex items-center gap-2.5', className)} aria-label="SE Jobs Australia home">
+    <Link href="/" className={cn('flex items-center gap-2.5', className)} aria-label="Civil Jobs Australia home">
       <span
         aria-hidden="true"
         className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground"
@@ -14,7 +14,15 @@ export function Logo({ className, inverted = false }: { className?: string; inve
       </span>
       <span className="flex flex-col leading-none">
         <span className={cn('text-base font-semibold tracking-tight', inverted ? 'text-white' : 'text-foreground')}>
-          SE Jobs <span className="text-accent">Australia</span>
+          Civil <span className="text-accent">Jobs</span>
+        </span>
+        <span
+          className={cn(
+            'mt-1 font-mono text-[10px] tracking-[0.25em] uppercase',
+            inverted ? 'text-white/60' : 'text-muted-foreground',
+          )}
+        >
+          Australia
         </span>
       </span>
     </Link>
