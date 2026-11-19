@@ -63,7 +63,11 @@ export function ProfileMenu({ email }: { email: string | null | undefined }) {
         className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-card px-3 text-sm font-medium whitespace-nowrap transition-colors hover:border-primary/40"
       >
         <UserRound className="size-4" aria-hidden="true" />
-        <span className="max-w-[8rem] truncate">{accountName ?? 'Profile'}</span>
+        {/* Text label hidden on phones: with the theme toggle, settings,
+            profile and hamburger, the header row overflows 390px screens
+            and pushes the hamburger off-screen. The button keeps its
+            aria-label, so it stays identifiable without the text. */}
+        <span className="hidden max-w-[8rem] truncate sm:inline">{accountName ?? 'Profile'}</span>
         <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
       </button>
 

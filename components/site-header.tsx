@@ -14,6 +14,10 @@ import { cn } from '@/lib/utils'
 const NAV_ITEMS = [
   { href: '/industry', label: 'Industry Jobs' },
   { href: '/countries', label: 'Browse by Country' },
+  // The home page's "Browse by discipline" section (all civil disciplines
+  // with live counts) and the visa-sponsored filtered jobs list.
+  { href: '/#disciplines', label: 'Browse by Discipline' },
+  { href: '/jobs?visa=1', label: 'Visa Sponsored' },
   { href: '/alerts', label: 'Job alerts' },
 ]
 
@@ -69,9 +73,10 @@ export function SiteHeader() {
         <Logo />
 
         {/*
-         * Three links plus two account buttons only fit on one line from 1280px up,
-         * so the nav appears at xl and the hamburger covers everything narrower.
-         * Everything is nowrap: a wrapped label is what made the bar look ragged.
+         * Five links plus the account controls only fit on one line from
+         * 1280px up, so the nav appears at xl and the hamburger covers
+         * everything narrower. Everything is nowrap: a wrapped label is
+         * what made the bar look ragged.
          */}
         <nav aria-label="Main" className="hidden items-center gap-0.5 xl:flex">
           {NAV_ITEMS.map((item) => {
@@ -82,7 +87,7 @@ export function SiteHeader() {
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'rounded-md px-2.5 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-muted hover:text-foreground',
+                  'rounded-md px-2 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-muted hover:text-foreground',
                   active ? 'text-primary' : 'text-muted-foreground',
                 )}
               >

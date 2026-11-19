@@ -19,7 +19,7 @@ export function RoleCategories({ counts }: RoleCategoriesProps) {
   )
 
   return (
-    <section aria-labelledby="browse-roles" className="border-y bg-muted/50 py-16 md:py-20">
+    <section id="disciplines" aria-labelledby="browse-roles" className="scroll-mt-20 border-y bg-muted/50 py-16 md:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <p className="font-mono text-xs font-medium tracking-wider text-accent uppercase">Browse by discipline</p>
         <h2 id="browse-roles" className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
