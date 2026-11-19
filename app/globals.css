@@ -183,6 +183,16 @@
   70%, 100% { opacity: 0; transform: translate(230px, 107px) rotate(25deg); }
 }
 
+/* LIVE badge dot: blinks (opacity + scale) so the pill reads as live. */
+@keyframes live-dot-blink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.2; transform: scale(0.7); }
+}
+
+.live-dot-blink {
+  animation: live-dot-blink 1.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .hero-stars, .hero-meteor { animation: none; }
+  .hero-stars, .hero-meteor, .live-dot-blink { animation: none; }
 }
