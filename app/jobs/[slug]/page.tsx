@@ -37,6 +37,24 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   }
 }
 
+/** ISO 3166 country code for the JobPosting markup; legacy AU listings
+ * carry no country field and default to Australia. */
+const COUNTRY_ISO: Record<string, string> = {
+  Australia: 'AU',
+  'United States': 'US',
+  Canada: 'CA',
+  'United Kingdom': 'GB',
+  Germany: 'DE',
+  Ireland: 'IE',
+  Italy: 'IT',
+  Spain: 'ES',
+  France: 'FR',
+  'New Zealand': 'NZ',
+  'United Arab Emirates': 'AE',
+  Oman: 'OM',
+  'Saudi Arabia': 'SA',
+}
+
 /**
  * Only real vacancies are marked up. Demo listings carry invented details, and
  * publishing JobPosting markup for them is what search engines treat as spam.
@@ -49,6 +67,9 @@ function jobPostingJsonLd(job: Job) {
 
   const city = getCity(job.city)?.name ?? job.location.split(',')[0].trim()
   const hasSalary = Boolean(job.salaryMin || job.salaryMax)
+  const countryName = job.country ?? 'Australia'
+  const countryIso = COUNTRY_ISO[countryName] ?? 'AU'
+  const currency = job.salaryCurrency?.toUpperCase() || (countryIso === 'AU' ? 'AUD' : undefined)
 
   return {
     '@context': 'https://schema.org',
@@ -73,17 +94,17 @@ function jobPostingJsonLd(job: Job) {
         '@type': 'PostalAddress',
         addressLocality: city,
         addressRegion: job.state,
-        addressCountry: 'AU',
+        addressCountry: countryIso,
       },
     },
     ...(job.workArrangement === 'remote' && {
       jobLocationType: 'TELECOMMUTE',
-      applicantLocationRequirements: { '@type': 'Country', name: 'Australia' },
+      applicantLocationRequirements: { '@type': 'Country', name: countryName },
     }),
-    ...(hasSalary && {
+    ...(hasSalary && currency && {
       baseSalary: {
         '@type': 'MonetaryAmount',
-        currency: 'AUD',
+        currency,
         value: {
           '@type': 'QuantitativeValue',
           ...(job.salaryMin ? { minValue: job.salaryMin } : {}),

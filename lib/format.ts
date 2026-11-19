@@ -19,15 +19,28 @@ const dateFormatter = new Intl.DateTimeFormat('en-AU', {
  * completely. A placeholder such as "Not advertised" reads like a gap on the
  * board rather than a fact about the ad, and most live listings omit pay.
  */
-export function formatSalary(job: Pick<Job, 'salaryMin' | 'salaryMax' | 'salaryPeriod'>) {
+export function formatSalary(
+  job: Pick<Job, 'salaryMin' | 'salaryMax' | 'salaryPeriod' | 'salaryCurrency'>,
+) {
   const { salaryMin, salaryMax } = job
 
   if (!salaryMin && !salaryMax) return null
 
+  const currency = job.salaryCurrency?.toUpperCase() || 'AUD'
+  const formatter =
+    currency === 'AUD'
+      ? compactAud
+      : new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency,
+          maximumFractionDigits: 0,
+          notation: 'compact',
+        })
+
   const min = salaryMin ?? salaryMax!
   const max = salaryMax ?? salaryMin!
   const range =
-    min === max ? compactAud.format(min) : `${compactAud.format(min)} – ${compactAud.format(max)}`
+    min === max ? formatter.format(min) : `${formatter.format(min)} – ${formatter.format(max)}`
 
   return job.salaryPeriod === 'scholarship' ? `${range} stipend p.a.` : `${range} p.a.`
 }

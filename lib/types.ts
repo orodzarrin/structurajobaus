@@ -31,13 +31,21 @@ export interface Job {
   organisation: string
   department?: string
   city: string
-  state: StateCode
+  /**
+   * Region/province/state as the ad states it, as a plain string. Australian
+   * listings use the state code (NSW, VIC, …); listings elsewhere use the
+   * region name (e.g. "California", "England", "Ontario", "Dubai").
+   */
+  state: string
   /** Country of the listing. Absent on older snapshots — those are all
    * Australian (their city/state say so), see countryOfJob in lib/jobs. */
   country?: string
   location: string
   salaryMin?: number
   salaryMax?: number
+  /** ISO 4217 currency of salaryMin/salaryMax, e.g. USD, GBP, EUR. Absent
+   * means AUD (all legacy listings are Australian). */
+  salaryCurrency?: string
   salaryPeriod: 'year' | 'scholarship'
   employmentType: EmploymentType
   workArrangement: WorkArrangement
