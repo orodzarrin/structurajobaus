@@ -55,11 +55,17 @@ export function CountryPicker({ countries, cities, jobs, total }: CountryPickerP
 
   const selectedCountry = countries.find((entry) => entry.slug === country)
 
+  /** Country names A–Z in the dropdown (the "All countries" option stays first). */
+  const sortedCountries = useMemo(
+    () => [...countries].sort((a, b) => a.country.localeCompare(b.country)),
+    [countries],
+  )
+
   const countryCities = useMemo(
     () =>
       cities
         .filter((entry) => entry.countrySlug === country)
-        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+        .sort((a, b) => a.name.localeCompare(b.name)),
     [cities, country],
   )
 
@@ -125,7 +131,7 @@ export function CountryPicker({ countries, cities, jobs, total }: CountryPickerP
           >
             <option value="">Select a country</option>
             <option value="all">All countries ({total} open roles)</option>
-            {countries.map((entry) => (
+            {sortedCountries.map((entry) => (
               <option key={entry.slug} value={entry.slug}>
                 {entry.country} ({entry.count} open roles)
               </option>

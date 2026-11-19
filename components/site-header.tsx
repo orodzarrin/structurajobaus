@@ -12,6 +12,7 @@ import { Logo } from '@/components/logo'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
+  { href: '/my-cv', label: 'CV Match' },
   { href: '/industry', label: 'Industry Jobs' },
   { href: '/countries', label: 'Browse by Country' },
   // The home page's "Browse by discipline" section (all civil disciplines
