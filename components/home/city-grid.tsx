@@ -2,17 +2,30 @@ import { ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
 import { CITIES } from '@/lib/taxonomy'
 
-export function CityGrid({ counts, headingLevel = 'h2' }: { counts: Record<string, number>; headingLevel?: 'h2' | 'h1' }) {
+export function CityGrid({
+  counts,
+  cities = CITIES,
+  eyebrow = 'Browse by city',
+  heading = 'Structural engineering jobs across Australia',
+  headingLevel = 'h2',
+}: {
+  counts: Record<string, number>
+  /** Subset to show — e.g. only one country's cities. Defaults to all hubs. */
+  cities?: typeof CITIES
+  eyebrow?: string
+  heading?: string
+  headingLevel?: 'h2' | 'h1'
+}) {
   const Heading = headingLevel
   return (
     <section aria-labelledby="browse-cities" className="py-16 md:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <p className="font-mono text-xs font-medium tracking-wider text-accent uppercase">Browse by city</p>
+        <p className="font-mono text-xs font-medium tracking-wider text-accent uppercase">{eyebrow}</p>
         <Heading id="browse-cities" className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-          Structural engineering jobs across Australia
+          {heading}
         </Heading>
         <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {CITIES.map((city) => (
+          {cities.map((city) => (
             <li key={city.slug}>
               <Link
                 href={`/cities/${city.slug}`}

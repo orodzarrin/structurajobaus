@@ -2,9 +2,11 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageHeader } from '@/components/page-header'
 import { ListsManager } from '@/components/account/lists-manager'
+import { LocalAlerts } from '@/components/alerts/local-alerts'
 import { criteriaToFilters, listsKey, type SavedList } from '@/lib/accounts'
 import { getCurrentUser } from '@/lib/auth'
-import { getJobs } from '@/lib/jobs'
+import { countryOfJob, countrySlug, getCountries, getJobs } from '@/lib/jobs'
+import type { AlertJobRow } from '@/lib/local-alerts'
 import { STORE_READY, getJson } from '@/lib/store'
 
 export const metadata: Metadata = {
@@ -14,6 +16,17 @@ export const metadata: Metadata = {
 }
 
 export default async function AlertsPage() {
+  // Data for the no-account alerts below: countries from the live job data,
+  // and a compact job index so the browser can count matches per alert.
+  const countries = getCountries()
+  const jobsIndex: AlertJobRow[] = (await getJobs()).map((job) => ({
+    title: job.title,
+    role: job.roleSlug,
+    country: countrySlug(countryOfJob(job)),
+    salaryMax: job.salaryMax ?? null,
+    visa: job.visaSponsorship,
+  }))
+
   if (!STORE_READY) {
     return (
       <>
@@ -28,6 +41,7 @@ export default async function AlertsPage() {
             Accounts are not switched on for this deployment yet. Everything else on the board works
             as normal.
           </p>
+          <LocalAlerts countries={countries} jobs={jobsIndex} />
         </div>
       </>
     )
@@ -62,6 +76,7 @@ export default async function AlertsPage() {
               </Link>
             </p>
           </div>
+          <LocalAlerts countries={countries} jobs={jobsIndex} />
         </div>
       </>
     )

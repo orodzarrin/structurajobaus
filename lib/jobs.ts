@@ -65,9 +65,61 @@ export const HAS_LIVE_DATA = LIVE_JOBS.length > 0
 
 const JOBS: Job[] = IS_DEMO_DATA ? [...SAMPLE_JOBS].sort(byNewest) : LIVE_JOBS
 
+/** URL slug for a country name: "Australia" -> "australia". */
+export function countrySlug(country: string) {
+  return country
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
+/**
+ * The country a listing belongs to, derived from the job data itself — never
+ * invented. A listing with an explicit country uses it; otherwise its city
+ * record carries the country; older snapshots have neither, and every one of
+ * those is Australian (all eight state codes are Australian states, and the
+ * feeds are Australian). When a feed from another country arrives it must
+ * set `country` (or add its cities), and the new country appears
+ * automatically in the counts and the Browse by Country page.
+ */
+export function countryOfJob(job: Job): string {
+  if (job.country) return job.country
+  const city = CITIES.find((entry) => entry.slug === job.city)
+  if (city) return city.country
+  return 'Australia'
+}
+
+export interface CountryCount {
+  country: string
+  slug: string
+  count: number
+}
+
+/** Countries in the current snapshot, most jobs first. */
+export function getCountries(): CountryCount[] {
+  const counts = new Map<string, number>()
+  for (const job of JOBS) {
+    const country = countryOfJob(job)
+    counts.set(country, (counts.get(country) ?? 0) + 1)
+  }
+  return [...counts.entries()]
+    .map(([country, count]) => ({ country, slug: countrySlug(country), count }))
+    .sort((a, b) => b.count - a.count || a.country.localeCompare(b.country))
+}
+
+export function getCountryBySlug(slug?: string): CountryCount | undefined {
+  return !slug ? undefined : getCountries().find((entry) => entry.slug === slug)
+}
+
+export function isKnownCountry(slug?: string) {
+  return !slug || getCountries().some((entry) => entry.slug === slug)
+}
+
 function matchesFilters(job: Job, filters: JobFilters) {
   if (filters.sector && job.sector !== filters.sector) return false
   if (filters.role && job.roleSlug !== filters.role) return false
+  if (filters.country && countrySlug(countryOfJob(job)) !== filters.country) return false
 
   // The feed never labels the sub-discipline, so the listing's own words decide it.
   if (filters.specialism) {
@@ -149,6 +201,7 @@ export async function getJobCounts() {
     industry: 0,
     visa: 0,
     byCity: {} as Record<string, number>,
+    byCountry: {} as Record<string, number>,
     byRole: {} as Record<string, number>,
   }
 
@@ -156,6 +209,8 @@ export async function getJobCounts() {
     counts[job.sector]++
     if (job.visaSponsorship) counts.visa++
     counts.byCity[job.city] = (counts.byCity[job.city] ?? 0) + 1
+    const country = countrySlug(countryOfJob(job))
+    counts.byCountry[country] = (counts.byCountry[country] ?? 0) + 1
     counts.byRole[job.roleSlug] = (counts.byRole[job.roleSlug] ?? 0) + 1
   }
 
@@ -197,6 +252,7 @@ export function parseFilters(params: RawSearchParams): JobFilters {
     sector: sector === 'industry' ? sector : undefined,
     role: get('role'),
     city: get('city'),
+    country: isKnownCountry(get('country')) ? get('country') : undefined,
     state: STATES.some((s) => s.code === state) ? (state as StateCode) : undefined,
     salaryMin: Number.isFinite(salary) && salary > 0 ? salary : undefined,
     visa: get('visa') === '1',

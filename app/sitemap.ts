@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { SITE_URL } from '@/lib/format'
-import { DATA_UPDATED_AT, getAllJobSlugs } from '@/lib/jobs'
+import { DATA_UPDATED_AT, getAllJobSlugs, getCountries } from '@/lib/jobs'
 import { ALL_ROLES, CITIES } from '@/lib/taxonomy'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -12,6 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/jobs',
     '/industry',
     '/cities',
+    '/countries',
     '/post-a-job',
     '/privacy',
     '/terms',
@@ -24,6 +25,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticPages,
+    ...getCountries().map((entry) => ({
+      url: `${SITE_URL}/countries/${entry.slug}`,
+      lastModified,
+      changeFrequency: 'daily' as const,
+      priority: 0.8,
+    })),
     ...ALL_ROLES.map((role) => ({
       url: `${SITE_URL}/${role.sector}?role=${role.slug}`,
       lastModified,

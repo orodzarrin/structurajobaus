@@ -26,6 +26,8 @@ export interface City {
   slug: string
   name: string
   state: StateCode
+  /** Country the city is in — every hub listed here is Australian today. */
+  country: string
   description: string
 }
 
@@ -34,6 +36,7 @@ export const CITIES: City[] = [
     slug: 'sydney',
     name: 'Sydney',
     state: 'NSW',
+    country: 'Australia',
     description:
       'Australia’s largest engineering market, with major transport, high-rise and infrastructure programs alongside leading research universities.',
   },
@@ -41,6 +44,7 @@ export const CITIES: City[] = [
     slug: 'newcastle',
     name: 'Newcastle',
     state: 'NSW',
+    country: 'Australia',
     description:
       'A growing hub for structural research, port and energy infrastructure, and regional consulting work in the Hunter.',
   },
@@ -48,6 +52,7 @@ export const CITIES: City[] = [
     slug: 'melbourne',
     name: 'Melbourne',
     state: 'VIC',
+    country: 'Australia',
     description:
       'Home to large rail, tunnel and building projects plus world-class structural engineering research groups.',
   },
@@ -55,6 +60,7 @@ export const CITIES: City[] = [
     slug: 'brisbane',
     name: 'Brisbane',
     state: 'QLD',
+    country: 'Australia',
     description:
       'Rapid growth in transport, bridges and venue infrastructure ahead of the 2032 Olympic and Paralympic Games.',
   },
@@ -62,6 +68,7 @@ export const CITIES: City[] = [
     slug: 'perth',
     name: 'Perth',
     state: 'WA',
+    country: 'Australia',
     description:
       'Strong demand from resources, marine and heavy industrial structures, with active university research in offshore engineering.',
   },
@@ -69,6 +76,7 @@ export const CITIES: City[] = [
     slug: 'adelaide',
     name: 'Adelaide',
     state: 'SA',
+    country: 'Australia',
     description:
       'Defence, health and road infrastructure investment driving steady demand for structural and civil engineers.',
   },

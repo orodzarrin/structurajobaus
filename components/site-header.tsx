@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { href: '/industry', label: 'Industry Jobs' },
-  { href: '/cities', label: 'Browse by City' },
+  { href: '/countries', label: 'Browse by Country' },
   { href: '/alerts', label: 'Job alerts' },
 ]
 

@@ -26,7 +26,14 @@ export async function JobsListing({ action, filters, lockSector, lockCity }: Job
 
   return (
     <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[280px_1fr] lg:px-8">
-      <aside className="lg:sticky lg:top-24 lg:self-start">
+      {/*
+       * The filter column is sticky, but it is taller than the viewport:
+       * without a capped height of its own the sticky top edge pins it and
+       * the "Apply filters" button at the bottom can never scroll into
+       * view. So the column scrolls inside itself up to the viewport
+       * height, and the button is always reachable.
+       */}
+      <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-6.5rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain lg:pr-1 lg:pb-2">
         <JobFilters
           action={action}
           filters={filters}

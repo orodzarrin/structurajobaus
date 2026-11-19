@@ -32,6 +32,9 @@ export interface Job {
   department?: string
   city: string
   state: StateCode
+  /** Country of the listing. Absent on older snapshots — those are all
+   * Australian (their city/state say so), see countryOfJob in lib/jobs. */
+  country?: string
   location: string
   salaryMin?: number
   salaryMax?: number
@@ -62,6 +65,8 @@ export interface JobFilters {
   role?: string
   city?: string
   state?: StateCode
+  /** Country slug (e.g. 'australia'), derived from the job data. */
+  country?: string
   salaryMin?: number
   visa?: boolean
   remote?: boolean
