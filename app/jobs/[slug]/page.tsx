@@ -1,11 +1,13 @@
-import { Building2, CalendarClock, CalendarDays, Clock, Laptop, MapPin, Plane, Wallet } from 'lucide-react'
+import { Building2, CalendarClock, CalendarDays, Clock, Laptop, Mail, MapPin, Plane, Wallet } from 'lucide-react'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { ApplyButton } from '@/components/jobs/apply-button'
+import { EmailApplication } from '@/components/jobs/email-application'
 import { JsonLd } from '@/components/json-ld'
 import { JobCard, SectorBadge } from '@/components/jobs/job-card'
 import { PageHeader } from '@/components/page-header'
 import {
+  decodeHtmlEntities,
   EMPLOYMENT_TYPE_LABEL,
   formatDate,
   formatSalary,
@@ -13,6 +15,7 @@ import {
   SOURCE_ATTRIBUTION,
   WORK_ARRANGEMENT_LABEL,
 } from '@/lib/format'
+import { getCompanyEmail } from '@/lib/data/company-contacts'
 import { getAllJobSlugs, getJobBySlug, getRelatedJobs, IS_DEMO_DATA } from '@/lib/jobs'
 import { getCity, getRole } from '@/lib/taxonomy'
 import type { Job } from '@/lib/types'
@@ -31,9 +34,9 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const title = `${job.title} — ${[job.organisation, job.location].filter(Boolean).join(', ')}`
   return {
     title,
-    description: job.summary,
+    description: decodeHtmlEntities(job.summary),
     alternates: { canonical: `/jobs/${job.slug}` },
-    openGraph: { title, description: job.summary, type: 'article' },
+    openGraph: { title, description: decodeHtmlEntities(job.summary), type: 'article' },
   }
 }
 
@@ -129,6 +132,17 @@ export default async function JobPage({ params }: { params: Params }) {
 
   const salary = formatSalary(job)
 
+  // The employer's published contact email, when one exists. Companies with
+  // no published email get no row — never a made-up address.
+  const contact = job.organisation ? getCompanyEmail(job.organisation) : undefined
+  const contactMailto = contact
+    ? `mailto:${contact.email}?subject=${encodeURIComponent(
+        `Application status enquiry — ${job.title} (${job.organisation})`,
+      )}&body=${encodeURIComponent(
+        `Dear ${job.organisation} Recruitment Team,\n\nI recently applied for the ${job.title} role and would like to enquire about the status of my application.\n\nThank you for your time.\n\nKind regards,\n[Your Name]`,
+      )}`
+    : undefined
+
   const facts = [
     // Only facts the ad states are listed: no "Not advertised" filler.
     ...(salary ? [{ icon: Wallet, label: 'Salary', value: salary }] : []),
@@ -150,7 +164,7 @@ export default async function JobPage({ params }: { params: Params }) {
       <PageHeader
         eyebrow={role?.name ?? sectorLabel}
         title={job.title}
-        description={job.summary}
+        description={decodeHtmlEntities(job.summary)}
         breadcrumbs={[
           { label: sectorLabel, href: '/industry' },
           { label: job.title, href: `/jobs/${job.slug}` },
@@ -172,7 +186,7 @@ export default async function JobPage({ params }: { params: Params }) {
               About the role
             </h2>
             <p className="mt-3 leading-relaxed whitespace-pre-line text-muted-foreground">
-              {job.description}
+              {decodeHtmlEntities(job.description)}
             </p>
           </section>
 
@@ -234,6 +248,21 @@ export default async function JobPage({ params }: { params: Params }) {
                   </div>
                 </div>
               ))}
+              {contact && contactMailto && (
+                <div className="flex items-start gap-3 py-3">
+                  <Mail className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <dt className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+                      Contact email
+                    </dt>
+                    <dd className="mt-0.5 text-sm font-medium break-all">
+                      <a href={contactMailto} className="text-primary underline hover:text-primary/80">
+                        {contact.email}
+                      </a>
+                    </dd>
+                  </div>
+                </div>
+              )}
             </dl>
             {IS_DEMO_DATA ? (
               <p className="mt-4 rounded-md border border-dashed px-3 py-2.5 text-center text-xs text-muted-foreground">
@@ -241,6 +270,13 @@ export default async function JobPage({ params }: { params: Params }) {
               </p>
             ) : (
               <ApplyButton slug={job.slug} href={job.applyUrl} />
+            )}
+            {!IS_DEMO_DATA && (
+              <EmailApplication
+                title={job.title}
+                organisation={job.organisation}
+                contactEmail={contact?.email ?? null}
+              />
             )}
             {attribution && (
               <p className="mt-3 text-center text-xs text-muted-foreground">

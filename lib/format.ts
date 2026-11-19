@@ -111,3 +111,33 @@ export const SOURCE_ATTRIBUTION: Record<string, { label: string; url: string }> 
 
 /** Adzuna's terms require an attribution link wherever their listings appear. */
 export const ADZUNA_ATTRIBUTION_URL = 'https://www.adzuna.com.au'
+
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: '\u00a0',
+}
+
+/**
+ * Feed ad text sometimes arrives with HTML entities left in it
+ * ("40&#43; countries", "email&#64;domain.com"). React renders a JS string
+ * verbatim, so the entities show literally unless decoded first. Decodes
+ * numeric decimal/hex entities and the common named ones. The ingest already
+ * strips angle brackets, so no markup can appear from decoding.
+ */
+export function decodeHtmlEntities(text: string): string {
+  return text.replace(/&(#\d+|#x[0-9a-fA-F]+|[a-zA-Z]+);/g, (match, body: string) => {
+    if (body.startsWith('#x') || body.startsWith('#X')) {
+      const code = Number.parseInt(body.slice(2), 16)
+      return Number.isNaN(code) ? match : String.fromCodePoint(code)
+    }
+    if (body.startsWith('#')) {
+      const code = Number.parseInt(body.slice(1), 10)
+      return Number.isNaN(code) ? match : String.fromCodePoint(code)
+    }
+    return NAMED_ENTITIES[body] ?? match
+  })
+}

@@ -1,4 +1,5 @@
 import { CityGrid } from '@/components/home/city-grid'
+import { CvPromo } from '@/components/home/cv-promo'
 import { Hero } from '@/components/home/hero'
 import { JobSection } from '@/components/home/job-section'
 import { RoleCategories } from '@/components/home/role-categories'
@@ -41,6 +42,7 @@ export default async function HomePage() {
         columns={3}
       />
       <RoleCategories counts={counts.bySpecialism} />
+      <CvPromo />
       <JobSection
         id="latest-industry"
         eyebrow="Industry"
