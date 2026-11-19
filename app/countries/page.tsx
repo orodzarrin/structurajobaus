@@ -22,39 +22,39 @@ export default async function CountriesPage() {
         description="Pick a country to see its cities and open roles — every country on the list is selectable, even where no roles have arrived yet. Counts come from the live job data, so a new country shows up here as soon as jobs from there arrive."
         breadcrumbs={[{ label: 'Countries', href: '/countries' }]}
       />
-      <section aria-labelledby="browse-countries" className="py-16 md:py-20">
+      <section aria-labelledby="browse-countries" className="py-10 md:py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <p className="font-mono text-xs font-medium tracking-wider text-accent uppercase">
             Browse by country
           </p>
           <h2
             id="browse-countries"
-            className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl"
+            className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl"
           >
             Where the jobs are
           </h2>
-          <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-6 grid gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             <li>
               <Link
                 href="/industry"
-                className="group relative flex h-full flex-col overflow-hidden rounded-lg border bg-card p-6 transition-colors hover:border-primary/40"
+                className="group relative flex h-full flex-col overflow-hidden rounded-lg border bg-card p-4 transition-colors hover:border-primary/40"
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-mono text-xs tracking-wider text-muted-foreground uppercase">
+                    <p className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
                       Everything
                     </p>
-                    <h3 className="mt-1 text-xl font-semibold">All countries</h3>
+                    <h3 className="mt-0.5 text-base font-semibold">All countries</h3>
                   </div>
                   <ArrowUpRight
-                    className="size-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-accent"
+                    className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-accent"
                     aria-hidden="true"
                   />
                 </div>
-                <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                   Every open role on the board, in every country, together.
                 </p>
-                <p className="mt-5 font-mono text-sm tabular-nums">
+                <p className="mt-3 font-mono text-xs tabular-nums">
                   <span>{counts.total}</span> <span className="text-muted-foreground">open roles</span>
                 </p>
               </Link>
@@ -65,24 +65,24 @@ export default async function CountriesPage() {
                   href={`/countries/${entry.slug}`}
                   className={
                     entry.count > 0
-                      ? 'group relative flex h-full flex-col overflow-hidden rounded-lg border bg-primary p-6 text-primary-foreground transition-colors hover:bg-primary/95'
-                      : 'group relative flex h-full flex-col overflow-hidden rounded-lg border bg-card p-6 transition-colors hover:border-primary/40'
+                      ? 'group relative flex h-full flex-col overflow-hidden rounded-lg border bg-primary p-4 text-primary-foreground transition-colors hover:bg-primary/95'
+                      : 'group relative flex h-full flex-col overflow-hidden rounded-lg border bg-card p-4 transition-colors hover:border-primary/40'
                   }
                 >
                   <div
                     className="blueprint-grid absolute inset-0 opacity-60"
                     aria-hidden="true"
                   />
-                  <div className="relative flex items-start justify-between">
+                  <div className="relative flex items-start justify-between gap-2">
                     <div>
-                      <p className="font-mono text-xs tracking-wider text-accent uppercase">Country</p>
-                      <h3 className="mt-1 text-xl font-semibold">{entry.country}</h3>
+                      <p className="font-mono text-[11px] tracking-wider text-accent uppercase">Country</p>
+                      <h3 className="mt-0.5 text-base font-semibold">{entry.country}</h3>
                     </div>
                     <ArrowUpRight
                       className={
                         entry.count > 0
-                          ? 'size-5 text-white/60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-accent'
-                          : 'size-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-accent'
+                          ? 'size-4 shrink-0 text-white/60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-accent'
+                          : 'size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-accent'
                       }
                       aria-hidden="true"
                     />
@@ -90,15 +90,15 @@ export default async function CountriesPage() {
                   <p
                     className={
                       entry.count > 0
-                        ? 'relative mt-3 line-clamp-2 text-sm leading-relaxed text-white/70'
-                        : 'relative mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground'
+                        ? 'relative mt-2 line-clamp-2 text-xs leading-relaxed text-white/70'
+                        : 'relative mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground'
                     }
                   >
                     {entry.count > 0
                       ? `Civil engineering roles in ${entry.country} — pick a city to narrow it down.`
                       : `No open roles in ${entry.country} yet — new roles will appear here as soon as they arrive.`}
                   </p>
-                  <p className="relative mt-5 font-mono text-sm tabular-nums">
+                  <p className="relative mt-3 font-mono text-xs tabular-nums">
                     <span className={entry.count > 0 ? 'text-white' : ''}>{entry.count}</span>{' '}
                     <span className={entry.count > 0 ? 'text-white/60' : 'text-muted-foreground'}>
                       open roles
